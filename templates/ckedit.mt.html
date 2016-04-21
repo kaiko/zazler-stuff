@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Editor</title>
+<script src="//cdn.ckeditor.com/4.5.7/standard/ckeditor.js"></script>
+<style>
+*{
+	font-family: Verdana, Helvetica ,sans-serif;
+	box-sizing: border-box;
+}
+body{
+	margin: 30px;
+}
+.menu-article{ 
+	display: block; 
+	padding: 5px 20px;
+	margin: 10px 0;
+	background-color: beige;
+	cursor: pointer;
+}
+#menu{
+	padding-bottom: 40px;
+}
+label{
+	display: block;
+}
+.title, .date {
+    background-color: transparent;
+    border: 0px solid;
+    border-bottom: 1px solid lightgray;
+    height: 28px;
+    font-size: 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    width: 100%;
+    resize: horizontal;
+}
+form{
+	display: none;
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background-color: white;
+	top: 0;
+	left: 0;
+	padding: 20px;
+}
+form button{
+	margin: 15px 10px 0 0;
+}
+.date{
+	height: 20px;
+	font-size: 15px;
+}
+.deleted{
+	background-color: white;
+	opacity: 0.3;
+}
+</style>
+<script>
+
+CKEDITOR.config.height = window.innerHeight - 300;
+var table = "<%= req.table %>";
+
+var replaceChars = {
+	'ö' : 'o',
+	'õ' : 'o',
+	'ü' : 'u',
+	'ä' : 'a'
+}
+
+var date = new Date().toJSON().substring(0,10);
+
+var niceUrl = function(s){
+	s = s.toLowerCase();
+	s = s.replace(/ /g, '-');
+	for (var key in replaceChars) {
+		if (replaceChars.hasOwnProperty(key)) {
+			s = s.replace(new RegExp(key, 'g'), replaceChars[key]);
+		}
+	}
+	s = s.replace(/[^a-zA-Z0-9_-]/g, '');
+	return s;
+}
+
+function save(id) {
+	console.log('save() called');
+  if (id == '0'){
+  	id = null;
+  }
+  var url = document.getElementById('url' + (id||0)).value;
+  if (url.length == 0) {
+  	url = document.getElementById('url' + (id||0)).placeholder;
+  }
+  var d = { id: id || null, 
+  			content: CKEDITOR.instances['editor' + (id||0)].getData(), 
+  			title  : document.getElementById('key' + (id||0)).value,
+  			at     : document.getElementById('at'  + (id||0)).value,
+  			lang   : document.getElementById('lang'+ (id||0)).value,
+  			url    : url
+  		}
+
+  var req = new XMLHttpRequest();
+  req.open("POST", table + ".json");
+
+  req.addEventListener("load", function(){
+  	console.log(req.responseText);
+  	if (req.status == 200) location.reload();
+  })
+
+  req.setRequestHeader('Content-type', 'text/plain');
+  req.send(JSON.stringify([d]));
+}
+
+
+function del(id) {
+  var d = { id: -id }
+  var req = new XMLHttpRequest();
+  req.open("POST", table + ".json");
+
+  req.addEventListener("load", function(){
+  	if (req.status == 200) location.reload();
+  })
+
+  req.setRequestHeader('Content-type', 'text/plain');
+  req.send(JSON.stringify([d]));
+}
+
+function hideForm(id){
+	document.getElementById(id).style.display = 'none';
+	document.getElementById('menu').style.display = 'block';
+}
+
+document.addEventListener("DOMContentLoaded", function(event) { 
+
+	var menuItems = document.querySelectorAll('.menu-article');
+	for (var i = 0; i < menuItems.length; i++) {
+	    menuItems[i].addEventListener('click', function(event) {
+	    	var id = this.id.substr(7),
+	    		element = document.getElementById(id);
+
+	        element.style.display = getComputedStyle(element).display == 'none' ? 'block' : 'none';
+	    })
+	}
+
+	var articles = document.querySelectorAll('form');
+	[].forEach.call(articles, function(article) {
+		var id = article.id,
+  			urlElem = document.getElementById('url'+id),
+	        title   = document.getElementById('key'+id).value;
+
+	    document.getElementById('at'+id).value = date;
+	    if (urlElem && urlElem.placeholder == ""){
+	    	urlElem.placeholder = niceUrl(title);
+	    	urlElem.addEventListener('click', function(){
+    			urlElem.value = niceUrl(title)
+
+	    	})
+	    }
+	});
+	
+	document.getElementById('key0').addEventListener('blur', function(){
+		var newTitle = document.getElementById('key0').value,
+			newUrl   = document.getElementById('url0');
+
+		if(newUrl.value == ""){
+			newUrl.placeholder = niceUrl(newTitle);
+		}
+	})
+
+	document.getElementById('url0').addEventListener('click', function(event){
+		event.preventDefault();
+		var url = document.getElementById('url0');
+		url.value = url.placeholder;
+
+		// var newTitle = document.getElementById('key0').value,
+		//     newUrl   = document.getElementById('url0');
+		// newUrl.placeholder = niceUrl(newTitle);
+	})
+
+	function reset(){
+		document.getElementById('0').reset();
+		document.getElementById('url0').placeholder = "";
+	}
+});
+</script>
+</head>
+<body>
+
+<div id="menu">
+<div id="article0" class="menu-article" >
+	Lisa uus
+</div>
+<% result.data.forEach(function(txt){
+	print('<div id="article' + txt.id + '" class="menu-article') 
+	if(txt.deleted_at){
+	print(' deleted');
+	}
+	print('">\n');
+	print(txt.created_at + ' - ' + (txt.title || txt.et_title));
+	print('</div>\n');
+}) %>
+</div>
+
+<% result.data.forEach(function (txt) { %>
+
+<form method="GET" action="javascript:void(0)" id="<%= txt.id %>">
+<div>
+<input class="title" type="text" id="key<%= txt.id %>" value="<%= escHtml(txt.title || txt.et_title) %>">
+<input class="date" type="text" id="at<%= txt.id %>" placeholder="Kuupäev" value="<%= escHtml(txt.at) %>">
+<input class="date" type="text" id="url<%= txt.id %>" value="<%= escHtml(txt.url) %>">
+<select id="lang<%= txt.id %>">
+  <option value="et" selected>Eesti</option> 
+  <option value="fi" >Soome</option>
+  <option value="ru">Vene</option>
+  <option value="en">Inglise</option>
+</select>
+</div>
+<textarea name="editor<%= txt.id %>" id="editor<%= txt.id %>" rows="40" cols="80"><%= escHtml(txt.content || txt.et) %></textarea>
+<script> CKEDITOR.replace( 'editor<%= txt.id %>' ); </script>
+<button value="Save" onclick="save(<%= txt.id %>)">Save</button>
+<button value="Delete" onclick="del(<%= txt.id %>)">Delete</button>
+<button value="Close" onclick="hideForm(<%= txt.id %>)">Close</button>
+</form>
+
+<% }) %>
+
+<form method="GET" action="javascript:void(0)" id="0">
+<div>
+<input class="title" type="text" name="key0" id="key0" placeholder="Title">
+<input class="date" type="text" name="at0" id="at0" placeholder="Date">
+<input class="date" type="text" name="url0" id="url0">
+<select id="lang0">
+  <option value="et" selected>Eesti</option> 
+  <option value="fi" >Soome</option>
+  <option value="ru">Vene</option>
+  <option value="en">Inglise</option>
+</select>
+</div>
+<textarea name="editor0" id="editor0" rows="10" cols="80"></textarea>
+<script> CKEDITOR.replace( 'editor0' ); </script>
+<button value="Create" onclick="save(0)">Create</button>
+<button value="Close" onclick="hideForm('0')">Close</button>
+<button value="Reset" onclick="reset()">Reset</button>
+</form>
+
+</body>
+</html>

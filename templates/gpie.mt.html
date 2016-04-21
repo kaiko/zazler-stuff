@@ -1,0 +1,43 @@
+<%
+var typ = { 'str': 'string', 'int': 'number' };
+
+var colInfo = result.cols.reduce(function (list, colName, idx) { list.push({ name: colName, type: result.types[idx] }); return list; }, []);
+rows = '[' + result.data.map(function (row) {
+  return '[' + colInfo.map(function (inf, idx) {
+    if (inf.type == 'date')
+      return 'new Date(' + (function (p) { return [p[0],p[1]-1,p[2]].join(',') })(row[inf.name].split('-')) + ')'
+    else
+      return JSON.stringify(row[inf.name]);
+  }).join(', ') + ']';
+}) + ']'
+%><!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+
+      // Load the Visualization API and the piechart package.
+      google.load('visualization', '1.0', {'packages':['corechart']});
+      google.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+
+        var data = google.visualization.arrayToDataTable(
+        <%= JSON.stringify( ([['key', 'value']]).concat(result.cols.map(function (col, idx) { return [ col , result.data[0][col] ] }))) %>
+        );
+
+        // Set chart options
+        var options = {'title': '', width: 600, height: 400};
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+
+<body>
+<div id="chart_div"></div>
+
+</body>
+</html>

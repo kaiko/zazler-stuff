@@ -1,0 +1,56 @@
+<%
+var typ = { 'str': 'string', 'int': 'number' };
+// Object.values = function (o) { return Object.keys(o).reduce( function (a, k) { a.push( o[k] ); return a; }, [] ) }
+
+var colInfo = result.cols.reduce(function (list, colName, idx) { list.push({ name: colName, type: result.types[idx] }); return list; }, []);
+rows = '[' + result.data.map(function (row) {
+  return '[' + colInfo.map(function (inf, idx) {
+    if (inf.type == 'date')
+      return 'new Date(' + (function (p) { return [p[0],p[1]-1,p[2]].join(',') })(row[inf.name].split('-')) + ')'
+    else
+      return JSON.stringify(row[inf.name]);
+  }).join(', ') + ']';
+}) + ']'
+%><!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+
+      // Load the Visualization API and the piechart package.
+      google.load('visualization', '1.0', {'packages':['corechart']});
+      google.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+<%= result.cols.map(function (col, idx) {
+    var cType = result.types[idx]
+      return '        data.addColumn("' + (typ[ cType ] || cType) + '", "' + col + '");';
+}).join("\n")
+%>
+        data.addRows(<%= rows %>);
+
+        // Set chart options
+        var options = {  width: 1000, height: 900 };
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+
+<body>
+<div>
+<% u = Object.keys(vars).filter( (k) => k != "let.step").map( (k) => encodeURIComponent(k) + '=' + encodeURIComponent(vars[k])).join('&') %>
+<a href="?<%= u + '&let.step=date(stepkey)'%>">Day</a> &nbsp; 
+<a href="?<%= u + '&let.step=week(stepkey)'%>">Week</a> &nbsp; 
+<a href="?<%= u + '&let.step=month(stepkey)'%>">Month</a> &nbsp; 
+
+</div>
+<div id="chart_div"></div>
+
+</body>
+</html>
