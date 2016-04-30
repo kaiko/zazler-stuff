@@ -1,0 +1,125 @@
+<%
+    lang = vars.lang || 'et';
+    test = null;
+
+    translations = (
+        vars.where ?  result.data : 
+        query('tr', {
+            where: "lang=L|isnull(lang)", 
+            "ljoin.tr@L": "L.label=tr.label:L.lang=L", 
+            "ljoin.tr@root": "root.label=tr.label:isnull(root.lang)", 
+            select : "tr.id,tr.label,L.default_text,L.content,root.default_text@rd,root.content@rc", 
+            group: "label", 
+            L: lang
+        }).data);
+
+%>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title><!tiitel>Zazler translation<!></title>
+        <meta charset="UTF-8">
+        <script src="https://code.jquery.com/jquery-2.2.3.js" integrity="sha256-laXWtGydpwqJ8JA+X9x2miwmaiKhn8tVmOVEigRNtP4=" crossorigin="anonymous"></script>
+        <style type="text/css">
+            * { font-family: sans-serif; }
+            .container { width: 1000px; margin: 0 auto; height: auto; }
+            input { width: 250px; margin: 0; padding: 0;}
+            button { width: 225px; }
+            tr td { width: 250px; }
+            div.change { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; display: none; }
+            textarea { width: 100%; height: 100%; }
+            button { width: 100%; }
+            a { text-decoration: none; color: #333; }
+            #language-links a { width: 33%;display: inline-block; text-align: center;}
+            th { background-color: #f1f2f3; padding: 5px 0; }
+            td { padding: 5px 0; }
+            a.changeLang.active { color: #05a5c5; }
+            a.change:hover { color: #05a5c5; }
+        </style>
+        <script type="text/javascript">
+            $(function(){
+
+                $('a.change').click(function(){
+                    $('div.change').show();
+                    $('textarea').text($(this).parents('tr').find('.content').text());
+                    return false;
+                });
+
+                $('#languages').submit(function(){
+                    Post($(this), function () {
+                        alert('salvestatud')
+                    })
+                    return false;
+                });
+            });
+
+            function Post ($form, callback){
+                var multiFormElements = [ 'label', 'content' ];
+                var values = {}; var multiple = [];
+
+                $.each( $form.serializeArray(), function(i, field) {
+                    if (multiFormElements.indexOf(field.name) != -1) {
+                        var temp = {};
+                            temp["fieldName"] = field.name;
+                            temp["fieldValue"] = field.value;
+                        multiple.push(temp);
+                        values[field.name] = [];
+                    } else {
+                        values[field.name] = field.value;
+                    }
+                }); for (var m in multiple) { values[multiple[m].fieldName].push(multiple[m].fieldValue); }
+                var query = [];
+                for (var i = 0; i < values[multiFormElements[0]].length; i++) {
+                    var temp = {
+                        lang: values.lang,
+                        label: values.label[i],
+                        content: values.content[i],
+                        default_text: values.content[i]
+                    }
+                    query.push(temp);
+                }
+                
+                var rpc = new XMLHttpRequest();
+                    rpc.open('POST','tr.json');
+                    rpc.send(JSON.stringify(query));
+            }
+        </script>
+    </head>
+    <body>
+    <!-- commenting should be allowed -->
+    
+        <div class="container">
+            <div id="language-links">
+                <a href="?lang=et" class="changeLang <%=(lang == 'et' ? 'active' : '')%>" title="et">ET</a>
+                <a href="?lang=en" class="changeLang <%=(lang == 'en' ? 'active' : '')%>" title="en">EN</a>
+                <a href="?lang=ru" class="changeLang <%=(lang == 'ru' ? 'active' : '')%>" title="ru">RU</a>
+            </div>
+            <form id="languages">
+                <!-- <input type="submit" value="salvesta" name="submit"> -->
+                <input type="hidden" class="lang" name="lang" value="<%=lang%>">
+                <table>
+                    <tr><th></th><th><!margistus>Märgistus<!></th><th><!sisu>Sisu<!></th><th><!default>Default<!></th><th>&nbsp;</th></tr>
+                    <% translations.forEach(translRow); %>
+                </table>
+            </form>
+        </div>
+
+        <div class="change">
+            <textarea id="change-content" data-id="0"></textarea>
+            <button class="changeLanguages"><!muuda>Muuda<!></button>
+        </div>
+        <!test><h1>Test</h1><!>
+        <!href:href target:target><a href="#" target="#">Test</a><!>
+        <!data-ok:vali-pealeistumise-aadress data-nok:lahtekoht-kaugel><label for="pickup-address" data-ok="Test server" data-nok="Default sisu"></label><!>
+    </body>
+</html>
+
+<% function translRow (t) { %>
+    <tr>
+        <td class="id"><%=t.id%></td>
+        <td class="label"><input type="hidden" name="label" value="<%=t.label%>"><%=t.label%></td>
+        <td class="content"><input type="hidden" name="content" value="<%=(t.content ? t.content : (t.rc ? t.rc : ''))%>"><%=(t.content ? t.content : (t.rc ? t.rc : ''))%></td>
+        <td class="content"><input type="hidden" name="content" value="<%=(t.default_text ? t.default_text : (t.rd ? t.rd : ''))%>"><%=(t.default_text ? t.default_text : (t.rd ? t.rd : ''))%></td>
+        <td class="change"><a href="#change" class="change">muuda</a></td>
+    </tr>
+<% } %>
