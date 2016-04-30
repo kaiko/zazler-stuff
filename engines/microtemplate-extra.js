@@ -171,6 +171,86 @@ String.prototype.toDate = function () {
 function escHtml(str) { return !str ? '' : String(str) .replace(/&/g, "&amp;") .replace(/"/g, "&quot;") .replace(/'/g, "&#39;") .replace(/</g, "&lt;") .replace(/>/g, "&gt;"); };
 encUrl = encodeURIComponent;
 
+var tr = query('tr').data;
+var translations = {};
+
+for (var t in tr) {
+    if (!translations[tr[t].lang]) {
+        translations[tr[t].lang] = {};
+    }
+
+    translations[tr[t].lang][tr[t].label] = tr[t].content;
+}
+
+var activeTranslation = vars.lang;
+var toDb = [];
+var debug = null;
+var transl;
+
+function _translate ( body ) { 
+  transl = body.match(/(?=<!(?!DOCTYPE|--))([\s\S]*?<!>)/igm);
+      if (transl && transl.length > 0) {
+          for ( t = 0; t < transl.length; t++) {
+              
+              //finding all block to be translated is working
+              block = transl[t];
+              var blockAttributes;
+              var res = block.match(/<!([^: ]+:[^<>]+)>/);
+
+              if ( res && res[1] ) {
+                  blockAttributes = res[1].split(" ");
+              }
+              
+              attributeName = block.match(/<!(.*?)>/)[1];
+
+              if (blockAttributes) { 
+                  re = new RegExp("<!" + attributeName + "(.*?)>(.*?)<!>","");
+                  blockToBeTranslated = block.match(re)[2];
+
+                  for (i = 0; i < blockAttributes.length; i++) {
+                      attrName = blockAttributes[i].split(':')[0];
+                      attrValue = blockAttributes[i].split(':')[1];
+
+                          rep = new RegExp(attrName + '="([^"]*)"',"");
+                          val = blockToBeTranslated.match(rep);
+
+                          debug=reg = new RegExp(attrName + '="(.+?)"', "g"); 
+                          blockToBeTranslated = (translations[activeTranslation] && translations[activeTranslation][attrValue] ? 
+                              blockToBeTranslated.replace(reg, attrName + '="' + translations[activeTranslation][attrValue] + '"') :
+                              blockToBeTranslated);
+
+                          toDb.push({
+                              label: attrName,
+                              content: '',
+                              default_text: (val ? val[1] : '')
+                          });
+                      //block = block.replace(block, blockToBeTranslated);
+                  }
+                  body = body.replace(block, blockToBeTranslated);
+                  
+              } else {
+                  
+                  //replacing single translations is working
+                  var re = new RegExp("<!" + attributeName + "(.*?)>(?:\\s*?)(.*?)(\\s*?)<!>","");
+                      attributeText = block.match(re)[2];
+                  var replace = ( translations[activeTranslation] && translations[activeTranslation][attributeName] ? translations[activeTranslation][attributeName]  : attributeText );
+
+                  toDb.push({
+                      label: attributeName,
+                      content: '',
+                      default_text: attributeText
+                  });
+
+                  body = body.replace(block, replace);
+              }
+          }
+      }
+  return body;
+}
+
+if (!vars.debugjs) { template = _translate(template); }
+if (vars.writeDb) { post("tr", {}, toDb); }
+
 fnBody =
     template.split("%>").map(function (p) {
         return p.split("<%").map(function (pp, i) {
