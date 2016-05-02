@@ -171,9 +171,13 @@ String.prototype.toDate = function () {
 function escHtml(str) { return !str ? '' : String(str) .replace(/&/g, "&amp;") .replace(/"/g, "&quot;") .replace(/'/g, "&#39;") .replace(/</g, "&lt;") .replace(/>/g, "&gt;"); };
 encUrl = encodeURIComponent;
 
-var tr = query('tr').data;
-var translations = {};
+if (query('_schema', {where: "tablename=tr", select: "count(*)>0@exists"}).data[0].exists) {
+    tr = query('tr').data;
+} else {
+    tr = [];
+}
 
+var translations = {};
 for (var t in tr) {
     if (!translations[tr[t].lang]) {
         translations[tr[t].lang] = {};
@@ -247,7 +251,6 @@ function _translate ( body ) {
 }
 
 if (!vars.debugjs) { template = _translate(template); }
-if (vars.writeDb) { post("tr", {}, toDb); }
 
 fnBody =
     template.split("%>").map(function (p) {
@@ -260,8 +263,8 @@ fnBody =
         }).join("\n");
       }).join("\n");
 
-if (vars.debugjs)
-     { contentType('text/plain', 'utf-8'); print(fnBody); }
-else { contentType("text/html",  "utf-8"); eval(fnBody);  }
+if (vars.showTranslations == 1) { contentType('application/json', 'utf-8'); print(JSON.stringify(toDb)); }
+else if (vars.debugjs)          { contentType('text/plain', 'utf-8'); print(fnBody); }
+else                            { contentType("text/html",  "utf-8"); eval(fnBody);  }
 
 
