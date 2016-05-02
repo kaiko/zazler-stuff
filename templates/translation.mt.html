@@ -5,9 +5,10 @@
 
     translations.forEach(function(t){
         if (!t.lang) {
-            langContent = query('tr', {select: "content", where: "lang=LA:label=LB", LA: lang, LB: t.label}).data[0];
+            langContent = query('tr', {select: "content,at", where: "lang=LA:label=LB", LA: lang, LB: t.label}).data[0];
             translatedContent = ( langContent ? langContent.content : '' );
-            rebuild.push({ lang: null, label: t.label, original: t.content, content: translatedContent });
+            renew = (langContent && (t.at > langContent.at) ? 'danger' : (!langContent ? 'warning' : 'default'));
+            rebuild.push({ lang: null, label: t.label, original: t.content, content: translatedContent, renew: renew});
         }
     });
 %>
@@ -18,25 +19,76 @@
         <meta charset="UTF-8">
         <script src="https://code.jquery.com/jquery-2.2.3.js" integrity="sha256-laXWtGydpwqJ8JA+X9x2miwmaiKhn8tVmOVEigRNtP4=" crossorigin="anonymous"></script>
         <style type="text/css">
-            /* default color #05a5c5 */
             * { font-family: sans-serif; }
             html, body, .container { height: 100%; width: 100%; margin: 0; padding: 0; }
-            table { width: 100%; margin-bottom: 130px; white-space: normal; table-layout: fixed; border-collapse: collapse; }
+            table { width: 100%; margin-bottom: 160px; white-space: normal; table-layout: fixed; border-collapse: collapse; }
+            .change { min-height: 150px; }
             table th { text-align: center; padding: 5px 0; border-bottom: 1px solid #05a5c5;}
-            textarea { height: 100px; margin: 0; box-sizing: border-box; float: left;}
+            textarea {min-height: 130px; height: 100%; margin: 0; box-sizing: border-box; float: left;}
             textarea#original-content { width: 50%; }
             textarea#new-content { width: 50%; }
             div.change { position: fixed; bottom: 0; left: 0; width: 100%;}
-            tr:hover td { background-color: #f1f2f3; cursor: pointer; }
             button { float: right; }
             label { float: left; width: 50%; background-color: #f1f2f3; padding: 5px 0}
-            td.label { width: 20%; white-space: nowrap; }
+            td.label { width: 20%; white-space: nowrap; padding-left: 15px; }
             td.original, td.content { max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px; }
             tr:nth-child(even) {background-color: #f2f2f2}
+            span {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                display: block;
+                opacity: .5;
+            }
+            span.danger {
+                background-color: red;
+            }
+            span.warning {
+                background-color: orange;
+            }
+            label:first-child { padding-left: 15px; box-sizing: border-box; }
+            tr.active, tr:hover td { background-color: #ddd; }
+            html,body{height:100%}
+            .simple {
+                height: 100%;
+                width: 100%
+            }
+            .simple div {
+                overflow: auto
+            }
+            .vsplitbar {
+                width: 5px;
+                background: #cab
+            }
+            .vsplitbar:hover{
+                background: #eab
+            }
+            .simple div {
+                overflow: auto
+            }
+            .vsplitbar {
+                width: 5px;
+                background: #cab
+            }
+            .vsplitbar:hover{
+                background: #eab
+            }
+            .handle {
+                width: 100%;
+                height: 5px;
+                background-color: #999;
+            }
+            .handle:hover {
+                background-color: #333;
+                cursor: n-resize;
+            }
         </style>
         <script type="text/javascript">
             $(function(){
-                var label;
+                var req = {};
+                $('tbody tr:first-child').addClass('active');
+                $('#new-content').text($('tbody tr:first-child').find('.content').text())
+                $('#original-content').text($('tbody tr:first-child').find('.original').text())
 
                 $('.getTranslations').click(function(){
                     var transl = prompt("Sisestage url, millelt tõlked tõmmata!", "");
@@ -58,20 +110,86 @@
                 });
 
                 $('tr.label').click(function(){
-                    var content = $('#new-content').val(); console.log(content);
-                        if (content.length == 0) {
-                            label = $(this).data('label');
-                            $('#new-content').text($('.' + label + '-content').text()).prop("disabled", false);
-                            $('#original-content').text($('.' + label + '-original').text());
-                        } else {
-                            var rpc = new XMLHttpRequest();
-                                rpc.open('POST','tr.json');
-                                rpc.send(JSON.stringify([{lang: '<%=lang%>', label: label, content: content}]));
-                                document.location.reload();
+                    req.content = $('#new-content').val();
+                    req.label = $('tr.active').data('label');
+                    $this = $(this);
+                    $('#new-content').trigger("focus");
+
+                    if (req.label) {
+                        request(req, $this);
+                    } else {
+                        $('tr').removeClass('active');
+                        $(this).addClass('active');
+                        $('#new-content').text($('.' + $(this).data('label') + '-content').text()).prop("disabled", false);
+                        $('#original-content').text($('.' + $(this).data('label') + '-original').text());
+                    }
+
+                });
+
+                var map = []; 
+                onkeydown = onkeyup = function(e){
+                    e = e || event;
+                    map[e.keyCode] = e.type == 'keydown';
+                    if (map[13] && map[17]) {
+                        $next = $('tr.active').next('tr');
+                        
+                            req.content = $('#new-content').val();
+                            req.label = $('tr.active').data('label');
+                            request(req, $next);
+
+                        $('tr').removeClass('active')
+                        $next.addClass('active');
+                        $('#new-content').val($next.find('.content').text());
+                        $('#original-content').text($next.find('.original').text());
+                        label = $('tr.active').data('label');
+
+                        if ($('label').offset().top < $next.offset().top) {
+                            window.scrollTo($next.offset().left, $next.offset().top);
                         }
 
+                        $('#new-content').prop("disabled", false).trigger("focus");
+                    }
+                }
+            });
+
+            function request (req, $this) {
+                var rpc = new XMLHttpRequest();
+                rpc.open('POST','tr.json');
+                rpc.send(JSON.stringify([{lang: '<%=lang%>', label: req.label, content: req.content}]));
+
+                rpc.onload = function (e) {
+                    if (rpc.readyState === 4) {
+                        if (rpc.status === 200) {
+                            if (JSON.parse(rpc.responseText).length == 0) {
+                                $('tr').removeClass('active');
+                                $this.addClass('active');
+
+                                $('#new-content').text($('.' + $('tr.active').data('label') + '-content').text()).prop("disabled", false);
+                                $('#original-content').text($('.' + $('tr.active').data('label') + '-original').text());
+
+                                $('tr td.'+ req.label + '-content').text(req.content)
+                            }
+                        }
+                    }
+                }
+            }
+
+            $(function(){
+                var md = false;
+                var screen = $(window).height();
+                $('.handle').mousedown(function(){
+                    md = true;
+                }).mouseup(function(){
+                    md = false;
+                })
+                $('.handle').mouseup(function(){ md = false; })
+                $(document).mousemove(function(event){
+                    if (md) {
+                        $('.change').css({height: screen - event.clientY})
+                    }
                 })
             });
+
             function validUrl ( str ) {
                 if(!/(http|https):\/\/(\w+:{0,1}\w*)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%!\-\/]))?/.test(str)) {
                     return false;
@@ -98,10 +216,10 @@
     </head>
     <body>
         <div class="container">
-            
             <table width="1300px">
                 <thead>
                     <tr>
+                        <th>&nbsp;</th>
                         <th width="20%"><!label>label<!></th>
                         <th width="40%"><!original>original<!></th>
                         <th width="40%"><!content>content<!>
@@ -113,19 +231,21 @@
                     <% rebuild.forEach(translationRow); %>
                 </tbody>
             </table>
-
             <div class="change">
-                <label>Originaal tekst</label><label>Tõlgitud tekst</label>
-                <textarea id="original-content" disabled="disabled"></textarea>
-                <textarea id="new-content" disabled="disabled"></textarea>
+                <div class="handle"></div>
+                <div style="height: 100%">
+                    <label>Originaal tekst</label><label>Tõlgitud tekst</label>
+                    <textarea id="original-content" disabled="disabled"></textarea>
+                    <textarea id="new-content"></textarea>
+                </div>
             </div>
-
         </div>
     </body>
 </html>
 
 <% function translationRow (t) { %>
     <tr class="label" data-label="<%=t.label%>">
+        <td class="notify"><span class="<%=t.renew%>"></span></td>
         <td class="label"><%=t.label%></td>
         <td class="<%=t.label%>-original original"><%=escHtml(t.original)%></td>
         <td class="<%=t.label%>-content content"><%=escHtml(t.content)%></td>
