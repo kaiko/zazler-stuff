@@ -221,8 +221,7 @@ function _translate ( body ) {
 
                           toDb.push({
                               label: attrName,
-                              content: '',
-                              default_text: (val ? val[1] : '')
+                              content: (val ? val[1] : '')
                           });
                       //block = block.replace(block, blockToBeTranslated);
                   }
@@ -237,8 +236,7 @@ function _translate ( body ) {
 
                   toDb.push({
                       label: attributeName,
-                      content: '',
-                      default_text: attributeText
+                      content: attributeText
                   });
 
                   body = body.replace(block, replace);
