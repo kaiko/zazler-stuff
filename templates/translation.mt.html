@@ -21,7 +21,7 @@
             /* default color #05a5c5 */
             * { font-family: sans-serif; }
             html, body, .container { height: 100%; width: 100%; margin: 0; padding: 0; }
-            table { width: 100%; }
+            table { width: 100%; margin-bottom: 130px; white-space: normal; table-layout: fixed; border-collapse: collapse; }
             table th { text-align: center; padding: 5px 0; border-bottom: 1px solid #05a5c5;}
             textarea { height: 100px; margin: 0; box-sizing: border-box; float: left;}
             textarea#original-content { width: 50%; }
@@ -29,6 +29,10 @@
             div.change { position: fixed; bottom: 0; left: 0; width: 100%;}
             tr:hover td { background-color: #f1f2f3; cursor: pointer; }
             button { float: right; }
+            label { float: left; width: 50%; background-color: #f1f2f3; padding: 5px 0}
+            td.label { width: 20%; white-space: nowrap; }
+            td.original, td.content { max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px; }
+            tr:nth-child(even) {background-color: #f2f2f2}
         </style>
         <script type="text/javascript">
             $(function(){
@@ -95,12 +99,12 @@
     <body>
         <div class="container">
             
-            <table>
+            <table width="1300px">
                 <thead>
                     <tr>
-                        <th><!label>label<!></th>
-                        <th><!original>original<!></th>
-                        <th><!content>content<!>
+                        <th width="20%"><!label>label<!></th>
+                        <th width="40%"><!original>original<!></th>
+                        <th width="40%"><!content>content<!>
                             <button class="getTranslations">Tõmba tõlked</button>
                         </th>
                     </tr>
@@ -111,6 +115,7 @@
             </table>
 
             <div class="change">
+                <label>Originaal tekst</label><label>Tõlgitud tekst</label>
                 <textarea id="original-content" disabled="disabled"></textarea>
                 <textarea id="new-content" disabled="disabled"></textarea>
             </div>
@@ -122,7 +127,7 @@
 <% function translationRow (t) { %>
     <tr class="label" data-label="<%=t.label%>">
         <td class="label"><%=t.label%></td>
-        <td class="<%=t.label%>-original"><%=t.original%></td>
-        <td class="<%=t.label%>-content"><%=t.content%></td>
+        <td class="<%=t.label%>-original original"><%=escHtml(t.original)%></td>
+        <td class="<%=t.label%>-content content"><%=escHtml(t.content)%></td>
     </tr>
 <% } %>
