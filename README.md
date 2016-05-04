@@ -47,3 +47,12 @@ attributes with translated content
     <!href:home-link target:home-link-target title:home-link-title> <a href="/home" target="_self" title="Home"> <!> <!home-link-text>Home<!> </a>
 
 all <!> tags will be removed
+
+
+Database table structure for translations
+
+    TABLE_NAME tr
+        label TEXT
+        lang CHAR(2) 
+        content TEXT
+        at DATE
