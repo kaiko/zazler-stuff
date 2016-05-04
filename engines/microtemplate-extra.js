@@ -192,42 +192,43 @@ var debug = null;
 var transl;
 
 function _translate ( body ) { 
-  transl = body.match(/(?=<!(?!DOCTYPE|--))([\s\S]*?<!>)/igm);
+  var transl = body.match(/(?=<!(?!DOCTYPE|--))([\s\S]*?<!>)/igm);
       if (transl && transl.length > 0) {
           for ( t = 0; t < transl.length; t++) {
               
               //finding all block to be translated is working
-              block = transl[t];
-              var blockAttributes;
-              var res = block.match(/<!([^: ]+:[^<>]+)>/);
+              var block = transl[t];
+              var blockAttributes = [];
+              var res = block.match(/<!([^: ]+=[^<>]+)>/);
 
               if ( res && res[1] ) {
                   blockAttributes = res[1].split(" ");
               }
               
-              attributeName = block.match(/<!(.*?)>/)[1];
+              var attributeName = block.match(/<!(.*?)>/)[1];
 
-              if (blockAttributes) { 
-                  re = new RegExp("<!" + attributeName + "(.*?)>(.*?)<!>","");
-                  blockToBeTranslated = block.match(re)[2];
+              if (blockAttributes.length > 0) { 
+                  var re = new RegExp("<!" + attributeName + "(.*?)>(.*?)<!>","");
+                  var blockToBeTranslated = block.match(re)[2];
 
                   for (i = 0; i < blockAttributes.length; i++) {
-                      attrName = blockAttributes[i].split(':')[0];
-                      attrValue = blockAttributes[i].split(':')[1];
+                      var attrName = blockAttributes[i].split('=')[0];
+                      var attrValue = blockAttributes[i].split('=')[1];
 
-                          rep = new RegExp(attrName + '="([^"]*)"',"");
-                          val = blockToBeTranslated.match(rep);
+                      var rep = new RegExp(attrName + '="([^"]*)"',"");
+                      var val = blockToBeTranslated.match(rep);
 
-                          debug=reg = new RegExp(attrName + '="(.+?)"', "g"); 
-                          blockToBeTranslated = (translations[activeTranslation] && translations[activeTranslation][attrValue] ? 
-                              blockToBeTranslated.replace(reg, attrName + '="' + translations[activeTranslation][attrValue] + '"') :
-                              blockToBeTranslated);
+                      var reg = new RegExp(attrName + '="(.+?)"', "g"); 
+                      blockToBeTranslated = (translations[activeTranslation] && translations[activeTranslation][attrValue] ? 
+                          blockToBeTranslated.replace(reg, attrName + '="' + translations[activeTranslation][attrValue] + '"') :
+                          blockToBeTranslated);
 
-                          toDb.push({
-                              label: attrName,
-                              content: (val ? val[1] : '')
-                          });
-                      //block = block.replace(block, blockToBeTranslated);
+                      toDb.push({
+                          label: attrValue,
+                          content: (val ? val[1] : '')
+                      });
+
+                      debug += attrValue + '\n';
                   }
                   body = body.replace(block, blockToBeTranslated);
                   
@@ -242,6 +243,8 @@ function _translate ( body ) {
                       label: attributeName,
                       content: attributeText
                   });
+
+                  debug += attributeText + '\n';
 
                   body = body.replace(block, replace);
               }
