@@ -164,8 +164,8 @@
                                 $('tr').removeClass('active');
                                 $this.addClass('active');
 
-                                $('#new-content').text($('.' + $('tr.active').data('label') + ' .content').text()).prop("disabled", false);
-                                $('#original-content').text($('.' + $('tr.active').data('label') + ' .original').text());
+                                $('#new-content').text($('.' + $('tr.active').data('label') + '-content').text()).prop("disabled", false);
+                                $('#original-content').text($('.' + $('tr.active').data('label') + '-original').text());
 
                                 $('tr td.'+ req.label + '-content').text(req.content)
                             }
