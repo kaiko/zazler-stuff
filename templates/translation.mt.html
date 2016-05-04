@@ -85,11 +85,6 @@
         </style>
         <script type="text/javascript">
             $(function(){
-                var req = {};
-                $('tbody tr:first-child').addClass('active');
-                $('#new-content').text($('tbody tr:first-child').find('.content').text())
-                $('#original-content').text($('tbody tr:first-child').find('.original').text())
-
                 $('.getTranslations').click(function(){
                     var transl = prompt("Sisestage url, millelt tõlked tõmmata!", "");
                     if (transl) {
@@ -109,70 +104,10 @@
                     }
                 });
 
-                $('tr.label').click(function(){
-                    req.content = $('#new-content').val();
-                    req.label = $('tr.active').data('label');
-                    $this = $(this);
-                    $('#new-content').trigger("focus");
-
-                    if (req.label) {
-                        request(req, $this);
-                    } else {
-                        $('tr').removeClass('active');
-                        $(this).addClass('active');
-                        $('#new-content').text($('.' + $(this).data('label') + '-content').text()).prop("disabled", false);
-                        $('#original-content').text($('.' + $(this).data('label') + '-original').text());
-                    }
-
+                $('tr.translate').translate({
+                    lang: '<%=lang%>'
                 });
-
-                var map = []; 
-                onkeydown = onkeyup = function(e){
-                    e = e || event;
-                    map[e.keyCode] = e.type == 'keydown';
-                    if (map[13] && map[17]) {
-                        $next = $('tr.active').next('tr');
-                        
-                            req.content = $('#new-content').val();
-                            req.label = $('tr.active').data('label');
-                            request(req, $next);
-
-                        $('tr').removeClass('active')
-                        $next.addClass('active');
-                        $('#new-content').val($next.find('.content').text());
-                        $('#original-content').text($next.find('.original').text());
-                        label = $('tr.active').data('label');
-
-                        if ($('label').offset().top < $next.offset().top) {
-                            window.scrollTo($next.offset().left, $next.offset().top);
-                        }
-
-                        $('#new-content').prop("disabled", false).trigger("focus");
-                    }
-                }
             });
-
-            function request (req, $this) {
-                var rpc = new XMLHttpRequest();
-                rpc.open('POST','tr.json');
-                rpc.send(JSON.stringify([{lang: '<%=lang%>', label: req.label, content: req.content}]));
-
-                rpc.onload = function (e) {
-                    if (rpc.readyState === 4) {
-                        if (rpc.status === 200) {
-                            if (JSON.parse(rpc.responseText).length == 0) {
-                                $('tr').removeClass('active');
-                                $this.addClass('active');
-
-                                $('#new-content').text($('.' + $('tr.active').data('label') + '-content').text()).prop("disabled", false);
-                                $('#original-content').text($('.' + $('tr.active').data('label') + '-original').text());
-
-                                $('tr td.'+ req.label + '-content').text(req.content)
-                            }
-                        }
-                    }
-                }
-            }
 
             $(function(){
                 var md = false;
@@ -189,6 +124,137 @@
                     }
                 })
             });
+
+            /**
+            * @author Karli Ots
+            * @created 04.05.2016
+            */
+
+            (function( $ ) {
+                $.fn.translate = function ( options ) {
+                    var defaults = {
+                        lang: 'et',
+                        item: 'tr',
+                        itemClass: 'translate',
+                        dataAttribute: 'label',
+                        activeClass: 'active',
+                        contentContainer: 'content',
+                        originalContainer: 'original',
+                        contentTextarea: '#new-content',
+                        originalTextarea: '#original-content',
+                        itemIdentificator: '.',
+                        separator: '-',
+                        keyCodes: {
+                            next: true,
+                            prev: true
+                        }
+                    };
+                    
+                    var settings = $.extend({}, defaults, options);
+
+                    var activeTranslation = {
+                        lang: settings.lang,
+                        label: '',
+                        content: '',
+                        changed: false
+                    };
+
+                    var requestSuccess = '';
+
+                    var methods = {
+                        sendRequest: function ( key ) {
+                            var content = activeTranslation.content;
+                            var wrapper = requestSuccess;
+
+                            //key is array of keys to be removed from object before sending to server
+                            $.each(key, function (index, value) {
+                                delete activeTranslation[value];
+                            })
+
+                            var rpc = new XMLHttpRequest();
+                            rpc.open('POST','tr.json');
+                            rpc.send(JSON.stringify([activeTranslation]));
+                            rpc.onload = function (e) {
+                                
+                                if (rpc.readyState === 4) {
+                                    if (rpc.status === 200) {
+                                        if (JSON.parse(rpc.responseText).length == 0) {
+                                            $(wrapper).text(content);
+                                        }
+                                    }
+                                }
+
+                            }
+                        },
+                        handleActiveItem: function ($this) {
+                            activeTranslation.label = $this.data(settings.dataAttribute);
+                            requestSuccess = settings.itemIdentificator + activeTranslation.label + settings.separator + settings.contentContainer;
+                            originalSuccess =  settings.itemIdentificator + activeTranslation.label + settings.separator + settings.originalContainer;
+                            
+                            activeTranslation.content = $this.find( requestSuccess ).text();
+                            $(settings.contentTextarea).val( $this.find( requestSuccess ).text() );
+                            $(settings.originalTextarea).val( $this.find( originalSuccess ).text() );
+
+                            $(settings.contentTextarea).trigger('focus')
+                        },
+                        init: function () {
+                            if ($(settings.item + settings.itemIdentificator + settings.itemClass + ":first-child").length) {
+                                $first = $(settings.item + settings.itemIdentificator + settings.itemClass + ":first-child"); 
+                                $first.addClass(settings.activeClass);
+
+                                methods.handleActiveItem($first);
+                            }
+                        }
+                    }
+
+                    methods.init();
+
+                    this.each(function () {
+                        $(this).click(function () {
+                            $this = $(this);
+                            
+                            if (activeTranslation.changed) { methods.sendRequest(['changed']) }
+                            $(settings.item).removeClass(settings.activeClass);
+                            $this.addClass(settings.activeClass);
+
+                            methods.handleActiveItem($this);
+                        });
+                    });
+
+                    $(settings.contentTextarea).keyup(function(){
+                        activeTranslation.changed = true;
+                        activeTranslation.content = $(this).val();
+                    });
+
+                    onkeyup = function (e) {
+                        e = e || event;
+                        if ((e.altKey || e.ctrlKey) && e.keyCode == 13) {
+                            if (activeTranslation.changed) { methods.sendRequest(['changed']) }
+
+                            if (e.ctrlKey && e.keyCode == 13) {
+                                if (settings.keyCodes.next) {
+                                    $this = $(settings.item + settings.itemIdentificator + settings.activeClass);
+                                    if ($this.next(settings.item).length) {
+                                        $next = $this.next(settings.item);
+                                        $this.removeClass(settings.activeClass);
+                                        $next.addClass(settings.activeClass);
+                                    }
+                                }
+                            } else if (e.altKey && e.keyCode == 13) {
+                                if (settings.keyCodes.prev) {
+                                    $this = $(settings.item + settings.itemIdentificator + settings.activeClass);
+                                    if ($this.prev(settings.item).length) {
+                                        $next = $this.prev(settings.item);
+                                        $this.removeClass(settings.activeClass);
+                                        $next.addClass(settings.activeClass);
+                                    }
+                                }
+                            }
+                            methods.handleActiveItem($next);
+                        }
+                    };
+                }
+            })( jQuery );
 
             function validUrl ( str ) {
                 if(!/(http|https):\/\/(\w+:{0,1}\w*)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%!\-\/]))?/.test(str)) {
@@ -244,7 +310,7 @@
 </html>
 
 <% function translationRow (t) { %>
-    <tr class="label" data-label="<%=t.label%>">
+    <tr class="translate" data-label="<%=t.label%>">
         <td class="notify"><span class="<%=t.renew%>"></span></td>
         <td class="label"><%=t.label%></td>
         <td class="<%=t.label%>-original original"><%=escHtml(t.original)%></td>
