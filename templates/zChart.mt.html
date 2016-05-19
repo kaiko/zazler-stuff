@@ -3,7 +3,7 @@
     
     // test data, selecting only 2 values from objects
     // test url select=count(*)@count,date(registered)@register&group=date(registered)
-    
+
     var selection = {
         bottom: 'register',
         data: 'count'
@@ -28,10 +28,10 @@
                         type: 'column'
                     },
                     title: {
-                        text: 'Daily registration'
+                        text: 'Chart description'
                     },
                     subtitle: {
-                        text: 'musicface.ee'
+                        text: 'Site title'
                     },
                     xAxis: {
                         categories: JSON.parse('<%=JSON.stringify(information.map(function(o){ return o[selection.bottom]; }))%>'),
